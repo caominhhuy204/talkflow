@@ -60,6 +60,8 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/google",
                                 "/api/auth/register",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
                                 "/actuator/health",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",

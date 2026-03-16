@@ -45,6 +45,12 @@ public class User {
     @Builder.Default
     private Boolean enabled = true;
 
+    @Column(name = "reset_password_token_hash", length = 64)
+    private String resetPasswordTokenHash;
+
+    @Column(name = "reset_password_token_expires_at")
+    private LocalDateTime resetPasswordTokenExpiresAt;
+
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {

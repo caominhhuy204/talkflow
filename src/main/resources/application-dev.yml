@@ -10,3 +10,5 @@ security:
 app:
   auth:
     google-client-id: ${GOOGLE_CLIENT_ID:665052367365-sh62qn5f2e1i1dd0cigd3kjq3jrv3f84.apps.googleusercontent.com}
+    password-reset:
+      expose-token: ${PASSWORD_RESET_EXPOSE_TOKEN:true}

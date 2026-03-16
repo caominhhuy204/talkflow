@@ -109,6 +109,14 @@ export async function loginWithGoogle(payload) {
   return request("/api/auth/google", { method: "POST", body: payload });
 }
 
+export async function forgotPassword(payload) {
+  return request("/api/auth/forgot-password", { method: "POST", body: payload });
+}
+
+export async function resetPassword(payload) {
+  return request("/api/auth/reset-password", { method: "POST", body: payload });
+}
+
 export async function getProjects(token) {
   return request("/api/projects", { token });
 }

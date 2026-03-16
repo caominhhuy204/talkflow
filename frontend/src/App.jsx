@@ -6,6 +6,7 @@ import {
   clearSession,
   createInternalRequest,
   createProject,
+  forgotPassword,
   formatDateTime,
   getApprovalInbox,
   getEmployeeOptions,
@@ -18,6 +19,7 @@ import {
   loginUser,
   loginWithGoogle,
   registerUser,
+  resetPassword,
   rejectRequest,
   removeProject,
   saveSession,
@@ -29,6 +31,8 @@ import {
 
 const EMPTY_LOGIN_FORM = { email: "", password: "" };
 const EMPTY_REGISTER_FORM = { fullName: "", email: "", password: "", role: "EMPLOYEE" };
+const EMPTY_FORGOT_FORM = { email: "" };
+const EMPTY_RESET_FORM = { token: "", newPassword: "", confirmPassword: "" };
 const EMPTY_PROJECT_FORM = { name: "", description: "" };
 const EMPTY_LEAVE_FORM = { leaveType: "ANNUAL", startDate: "", endDate: "", reason: "", handoverNote: "" };
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -121,6 +125,8 @@ function App() {
   const [authMode, setAuthMode] = useState("login");
   const [loginForm, setLoginForm] = useState(EMPTY_LOGIN_FORM);
   const [registerForm, setRegisterForm] = useState(EMPTY_REGISTER_FORM);
+  const [forgotForm, setForgotForm] = useState(EMPTY_FORGOT_FORM);
+  const [resetForm, setResetForm] = useState(EMPTY_RESET_FORM);
   const [authLoading, setAuthLoading] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
 
@@ -462,6 +468,55 @@ function App() {
     }
   }
 
+  async function handleForgotPassword(event) {
+    event.preventDefault();
+    setAuthLoading(true);
+    setAuthMessage("");
+    try {
+      const data = await forgotPassword(forgotForm);
+      setAuthMessage(
+        data?.resetToken
+          ? `Token đặt lại mật khẩu: ${data.resetToken}`
+          : "Nếu email tồn tại, yêu cầu đặt lại mật khẩu đã được ghi nhận."
+      );
+      setResetForm((prev) => ({ ...prev, token: data?.resetToken || "" }));
+      setForgotForm(EMPTY_FORGOT_FORM);
+      setAuthMode("reset");
+      pushToast("success", "Đã gửi yêu cầu đặt lại mật khẩu.");
+    } catch (error) {
+      setAuthMessage(toMessage(error));
+      pushToast("error", toMessage(error));
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleResetPassword(event) {
+    event.preventDefault();
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      setAuthMessage("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthMessage("");
+    try {
+      await resetPassword({
+        token: resetForm.token,
+        newPassword: resetForm.newPassword
+      });
+      setResetForm(EMPTY_RESET_FORM);
+      setAuthMode("login");
+      setAuthMessage("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập lại.");
+      pushToast("success", "Đặt lại mật khẩu thành công.");
+    } catch (error) {
+      setAuthMessage(toMessage(error));
+      pushToast("error", toMessage(error));
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
   function handleLogout() {
     clearSession();
     setSession(null);
@@ -690,8 +745,9 @@ function App() {
               <label>Email<input type="email" value={loginForm.email} onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))} required /></label>
               <label>Mật khẩu<input type="password" value={loginForm.password} onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))} required /></label>
               <button type="submit" disabled={authLoading}>{authLoading ? "Đang đăng nhập..." : "Đăng nhập"}</button>
+              <button type="button" className="ghost" onClick={() => setAuthMode("forgot")}>Forgot password?</button>
             </form>
-          ) : (
+          ) : authMode === "register" ? (
             <form className="form-grid" onSubmit={handleRegister}>
               <label>Họ và tên<input type="text" value={registerForm.fullName} onChange={(e) => setRegisterForm((p) => ({ ...p, fullName: e.target.value }))} required /></label>
               <label>Email<input type="email" value={registerForm.email} onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))} required /></label>
@@ -702,6 +758,28 @@ function App() {
                 <option value="HR">HR</option>
               </select></label>
               <button type="submit" disabled={authLoading}>{authLoading ? "Đang đăng ký..." : "Tạo tài khoản"}</button>
+            </form>
+          ) : authMode === "forgot" ? (
+            <form className="form-grid" onSubmit={handleForgotPassword}>
+              <label>Email
+                <input type="email" value={forgotForm.email} onChange={(e) => setForgotForm({ email: e.target.value })} required />
+              </label>
+              <button type="submit" disabled={authLoading}>{authLoading ? "Processing..." : "Send reset request"}</button>
+              <button type="button" className="ghost" onClick={() => setAuthMode("login")}>Back to sign in</button>
+            </form>
+          ) : (
+            <form className="form-grid" onSubmit={handleResetPassword}>
+              <label>Reset token
+                <input type="text" value={resetForm.token} onChange={(e) => setResetForm((p) => ({ ...p, token: e.target.value }))} required />
+              </label>
+              <label>New password
+                <input type="password" minLength={6} value={resetForm.newPassword} onChange={(e) => setResetForm((p) => ({ ...p, newPassword: e.target.value }))} required />
+              </label>
+              <label>Confirm password
+                <input type="password" minLength={6} value={resetForm.confirmPassword} onChange={(e) => setResetForm((p) => ({ ...p, confirmPassword: e.target.value }))} required />
+              </label>
+              <button type="submit" disabled={authLoading}>{authLoading ? "Processing..." : "Reset password"}</button>
+              <button type="button" className="ghost" onClick={() => setAuthMode("login")}>Back to sign in</button>
             </form>
           )}
 

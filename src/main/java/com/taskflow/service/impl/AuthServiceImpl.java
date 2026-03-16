@@ -1,10 +1,13 @@
 package com.taskflow.service.impl;
 
+import com.taskflow.dto.request.ForgotPasswordRequest;
 import com.taskflow.dto.request.GoogleLoginRequest;
 import com.taskflow.dto.request.LoginRequest;
 import com.taskflow.dto.request.RegisterRequest;
+import com.taskflow.dto.request.ResetPasswordRequest;
 import com.taskflow.dto.request.UpdateProfileRequest;
 import com.taskflow.dto.response.AuthResponse;
+import com.taskflow.dto.response.PasswordResetInitResponse;
 import com.taskflow.dto.response.UserProfileResponse;
 import com.taskflow.entity.Role;
 import com.taskflow.entity.User;
@@ -21,14 +24,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -36,6 +47,9 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final Set<String> allowedGoogleClientIds;
+    private final SecureRandom secureRandom = new SecureRandom();
+    private final long resetTokenTtlMinutes;
+    private final boolean exposeResetTokenInResponse;
     private final RestClient restClient = RestClient.create();
 
     public AuthServiceImpl(UserRepository userRepository,
@@ -43,12 +57,16 @@ public class AuthServiceImpl implements AuthService {
                            AuthenticationManager authenticationManager,
                            JwtService jwtService,
                            @Value("${app.auth.google-client-id:}") String googleClientId,
-                           @Value("${app.auth.google-client-ids:}") String googleClientIds) {
+                           @Value("${app.auth.google-client-ids:}") String googleClientIds,
+                           @Value("${app.auth.password-reset.token-ttl-minutes:30}") long resetTokenTtlMinutes,
+                           @Value("${app.auth.password-reset.expose-token:false}") boolean exposeResetTokenInResponse) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.allowedGoogleClientIds = buildAllowedGoogleClientIds(googleClientId, googleClientIds);
+        this.resetTokenTtlMinutes = resetTokenTtlMinutes;
+        this.exposeResetTokenInResponse = exposeResetTokenInResponse;
     }
 
     @Override
@@ -113,6 +131,41 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .build();
+    }
+
+    @Override
+    public PasswordResetInitResponse forgotPassword(ForgotPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        String resetToken = null;
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user != null) {
+            resetToken = generateResetToken();
+            user.setResetPasswordTokenHash(hashToken(resetToken));
+            user.setResetPasswordTokenExpiresAt(LocalDateTime.now().plusMinutes(resetTokenTtlMinutes));
+            userRepository.save(user);
+            log.info("Password reset token generated for user {}", email);
+        }
+
+        return PasswordResetInitResponse.builder()
+                .resetToken(exposeResetTokenInResponse ? resetToken : null)
+                .expiresInMinutes(resetTokenTtlMinutes)
+                .build();
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        String tokenHash = hashToken(request.getToken().trim());
+        LocalDateTime now = LocalDateTime.now();
+
+        User user = userRepository
+                .findByResetPasswordTokenHashAndResetPasswordTokenExpiresAtAfter(tokenHash, now)
+                .orElseThrow(() -> new BadRequestException("Invalid or expired reset token"));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setResetPasswordTokenHash(null);
+        user.setResetPasswordTokenExpiresAt(null);
+        userRepository.save(user);
     }
 
     @Override
@@ -236,5 +289,25 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return Set.copyOf(allowedIds);
+    }
+
+    private String generateResetToken() {
+        byte[] bytes = new byte[32];
+        secureRandom.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 algorithm not available", ex);
+        }
     }
 }

@@ -9,3 +9,8 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+app:
+  auth:
+    password-reset:
+      expose-token: ${PASSWORD_RESET_EXPOSE_TOKEN:false}
