@@ -2,6 +2,8 @@ package com.taskflow.controller;
 
 import com.taskflow.dto.response.ApiResponse;
 import com.taskflow.dto.response.UserOptionResponse;
+import com.taskflow.entity.Role;
+import com.taskflow.entity.User;
 import com.taskflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +29,11 @@ public class UserController {
     ) {
         String normalizedQuery = query == null ? null : query.trim();
 
-        List<UserOptionResponse> data = userRepository.searchEmployees(
-                        normalizedQuery == null || normalizedQuery.isBlank() ? null : normalizedQuery
-                ).stream()
+        List<User> employees = (normalizedQuery == null || normalizedQuery.isBlank())
+                ? userRepository.findByRoleOrderByFullNameAsc(Role.EMPLOYEE)
+                : userRepository.searchEmployeesByQuery(normalizedQuery);
+
+        List<UserOptionResponse> data = employees.stream()
                 .limit(50)
                 .map(user -> UserOptionResponse.builder()
                         .id(user.getId())

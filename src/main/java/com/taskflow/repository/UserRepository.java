@@ -1,6 +1,7 @@
 package com.taskflow.repository;
 
 import com.taskflow.entity.User;
+import com.taskflow.entity.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,14 +21,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
             LocalDateTime now
     );
 
+    List<User> findByRoleOrderByFullNameAsc(Role role);
+
     @Query("""
             select u
             from User u
             where u.role = com.taskflow.entity.Role.EMPLOYEE
-              and (:query is null
-                   or lower(u.fullName) like lower(concat('%', :query, '%'))
+              and (lower(u.fullName) like lower(concat('%', :query, '%'))
                    or lower(u.email) like lower(concat('%', :query, '%')))
             order by u.fullName asc
             """)
-    List<User> searchEmployees(@Param("query") String query);
+    List<User> searchEmployeesByQuery(@Param("query") String query);
 }
