@@ -1,0 +1,9 @@
+.git
+.idea
+target
+frontend/node_modules
+frontend/dist
+node_modules
+*.log
+README.md
+AI_PROJECT_CONTEXT_TaskFlow.md

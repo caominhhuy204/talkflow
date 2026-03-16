@@ -30,7 +30,7 @@ spring:
     type: redis
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 security:
   jwt:
