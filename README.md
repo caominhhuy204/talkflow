@@ -1,18 +1,18 @@
 # TaskFlow
 
 TaskFlow la he thong quan ly cong viec/noi bo gom:
-- Backend: Spring Boot REST API (JWT, MySQL, Redis, Swagger)
+- Backend: Spring Boot REST API (JWT, PostgreSQL, Redis, Swagger)
 - Frontend: React + Vite
 
 ## Cong nghe su dung
 
 - Java 17, Spring Boot 3
 - Spring Security + JWT
-- Spring Data JPA (MySQL)
+- Spring Data JPA (PostgreSQL)
 - Redis (cache)
 - OpenAPI/Swagger
 - React 18, Vite 5
-- Docker Compose (MySQL + Redis)
+- Docker Compose (PostgreSQL + Redis)
 
 ## Cau truc thu muc
 
@@ -20,7 +20,7 @@ TaskFlow la he thong quan ly cong viec/noi bo gom:
 taskflow/
 |-- src/                  # Backend Spring Boot
 |-- frontend/             # Frontend React
-|-- docker-compose.yml    # MySQL + Redis
+|-- docker-compose.yml    # PostgreSQL + Redis
 |-- .env.example          # Bien moi truong backend
 `-- pom.xml
 ```
@@ -43,9 +43,9 @@ taskflow/
 SPRING_PROFILES_ACTIVE=dev
 
 DB_HOST=localhost
-DB_PORT=3307
+DB_PORT=5433
 DB_NAME=taskflow_db
-DB_USERNAME=root
+DB_USERNAME=postgres
 DB_PASSWORD=123456
 
 REDIS_HOST=localhost
@@ -71,13 +71,13 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id
 
 ## Chay du an
 
-### 1. Khoi dong MySQL + Redis
+### 1. Khoi dong PostgreSQL + Redis
 
 ```bash
 docker compose up -d
 ```
 
-- MySQL: `localhost:3307`
+- PostgreSQL: `localhost:5433`
 - Redis: `localhost:6379`
 
 ### 2. Chay backend

@@ -1,6 +1,6 @@
 spring:
   datasource:
-    username: ${DB_USERNAME:root}
+    username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:123456}
 
 security:
