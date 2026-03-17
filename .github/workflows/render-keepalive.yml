@@ -16,11 +16,29 @@ jobs:
             exit 1
           fi
 
-      - name: Ping backend health endpoint
+      - name: Ping backend health endpoint (wait for wake-up)
         run: |
-          curl --fail --show-error --silent \
-            --connect-timeout 10 \
-            --max-time 20 \
-            --retry 2 \
-            --retry-delay 3 \
-            "${{ secrets.RENDER_HEALTHCHECK_URL }}"
+          URL="${{ secrets.RENDER_HEALTHCHECK_URL }}"
+          echo "Pinging: $URL"
+
+          # Render free services can return 503 while waking up.
+          # Wait up to 3 minutes (18 * 10s) for a healthy response.
+          for i in {1..18}; do
+            code=$(curl --silent --show-error --location \
+              --connect-timeout 10 \
+              --max-time 20 \
+              --output /dev/null \
+              --write-out "%{http_code}" \
+              "$URL" || true)
+
+            echo "Attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Backend is healthy."
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "Backend did not become healthy in time."
+          exit 1
