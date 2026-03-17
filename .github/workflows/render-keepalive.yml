@@ -1,0 +1,26 @@
+name: Keep Render Backend Awake
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate healthcheck URL
+        run: |
+          if [ -z "${{ secrets.RENDER_HEALTHCHECK_URL }}" ]; then
+            echo "Missing secret: RENDER_HEALTHCHECK_URL"
+            exit 1
+          fi
+
+      - name: Ping backend health endpoint
+        run: |
+          curl --fail --show-error --silent \
+            --connect-timeout 10 \
+            --max-time 20 \
+            --retry 2 \
+            --retry-delay 3 \
+            "${{ secrets.RENDER_HEALTHCHECK_URL }}"
